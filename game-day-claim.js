@@ -37,7 +37,7 @@
   let pcs = store.get("pc",{});
   let game = blank();
   const files = {}; // extra index -> File (receipt photos, kept in memory only)
-  function blank(){ return {date:"",arrive:"",rink:"",rinkPc:"",home:"",away:"",comp:profile.comp||"NIHL National",fee:profile.fee||"",miles:"",milesAuto:false,split:false,claimed:"",extras:[]}; }
+  function blank(){ return {date:"",arrive:"",rink:"",rinkPc:"",home:"",away:"",comp:profile.comp||"NIHL National",fee:profile.fee||"",miles:"",milesAuto:false,split:false,claimed:"",mileNotes:"",extras:[]}; }
 
   /* ---------- styles ---------- */
   if(!document.getElementById("gdc-fonts")){
@@ -80,7 +80,8 @@
   #gdc .full{grid-column:1/-1}
   #gdc label{display:block;font-size:14px;font-weight:600;margin:0 0 3px;color:var(--ink)}
   #gdc .hint{font-weight:400;color:var(--muted);font-size:13px}
-  #gdc input,#gdc select{width:100%;font:16px Barlow,sans-serif;color:var(--ink);background:var(--ice);border:1px solid var(--line);border-radius:9px;padding:9px 10px;min-height:44px;margin:0;height:auto}
+  #gdc input,#gdc select,#gdc textarea{width:100%;font:16px Barlow,sans-serif;color:var(--ink);background:var(--ice);border:1px solid var(--line);border-radius:9px;padding:9px 10px;min-height:44px;margin:0;height:auto;box-sizing:border-box}
+  #gdc textarea{resize:vertical;line-height:1.4}
   #gdc input[type=checkbox]{width:22px;height:22px;min-height:0;accent-color:var(--blue)}
   #gdc input:focus-visible,#gdc select:focus-visible,#gdc button:focus-visible{outline:3px solid var(--blue);outline-offset:2px}
   #gdc .check{display:flex;gap:10px;align-items:center;font-weight:500}
@@ -162,6 +163,7 @@
           <p class="route" data-o="route">Add your home postcode and the rink to work out the miles.</p></div>
         <div class="full"><label class="check"><input type="checkbox" data-g="split"> Splitting travel across more than one game today</label></div>
         <div class="full" data-o="claimedWrap" hidden><label for="gdc-cl">Miles claimed against this game</label><input id="gdc-cl" data-g="claimed" type="number" inputmode="decimal" step="0.1"></div>
+        <div class="full"><label for="gdc-mnotes">Travel notes <span class="hint">optional - e.g. shared a car, met up and drove part way</span></label><textarea id="gdc-mnotes" data-g="mileNotes" rows="2"></textarea></div>
       </div>
       <datalist id="gdc-teams">${RINKS.map(r=>`<option value="${esc(r.key)}">`).join("")}</datalist>
     </section>
@@ -273,15 +275,18 @@
 
   /* ---------- signature ---------- */
   (function(){
-    const cv=O("sig"), ctx=cv.getContext("2d"); let on=false, dirty=false;
-    function size(){ const r=cv.getBoundingClientRect(); if(!r.width) return; const dpr=window.devicePixelRatio||1; cv.width=r.width*dpr; cv.height=r.height*dpr; ctx.setTransform(dpr,0,0,dpr,0,0); ctx.lineWidth=2.2; ctx.lineCap="round"; ctx.lineJoin="round"; ctx.strokeStyle="#0D1A5A"; if(profile.sig){ const im=new Image(); im.onload=()=>ctx.drawImage(im,0,0,r.width,r.height); im.src=profile.sig; } }
-    const pt=e=>{ const r=cv.getBoundingClientRect(); return [e.clientX-r.left,e.clientY-r.top]; };
-    cv.addEventListener("pointerdown",e=>{ on=true; cv.setPointerCapture(e.pointerId); ctx.beginPath(); ctx.moveTo(...pt(e)); });
-    cv.addEventListener("pointermove",e=>{ if(!on) return; ctx.lineTo(...pt(e)); ctx.stroke(); dirty=true; });
+    const cv=O("sig"), ctx=cv.getContext("2d"); let on=false, dirty=false, sized=false;
+    function size(){ const r=cv.getBoundingClientRect(); if(!r.width||!r.height) return; const dpr=window.devicePixelRatio||1; const w=Math.round(r.width*dpr), h=Math.round(r.height*dpr); if(cv.width===w && cv.height===h && sized) return; const prev=profile.sig; cv.width=w; cv.height=h; ctx.setTransform(1,0,0,1,0,0); ctx.lineWidth=2.2*dpr; ctx.lineCap="round"; ctx.lineJoin="round"; ctx.strokeStyle="#0D1A5A"; sized=true; if(prev){ const im=new Image(); im.onload=()=>ctx.drawImage(im,0,0,cv.width,cv.height); im.src=prev; } }
+    // map a pointer event to backing-store pixels, correct across the whole pad regardless of CSS size or when sizing ran
+    const pt=e=>{ const r=cv.getBoundingClientRect(); return [ (e.clientX-r.left)*(cv.width/r.width), (e.clientY-r.top)*(cv.height/r.height) ]; };
+    cv.addEventListener("pointerdown",e=>{ e.preventDefault(); size(); on=true; try{cv.setPointerCapture(e.pointerId);}catch(_){ } ctx.beginPath(); ctx.moveTo(...pt(e)); });
+    cv.addEventListener("pointermove",e=>{ if(!on) return; e.preventDefault(); ctx.lineTo(...pt(e)); ctx.stroke(); dirty=true; });
     const end=()=>{ if(!on) return; on=false; if(dirty){ profile.sig=cv.toDataURL("image/png"); store.set("profile",profile); O("sigState").textContent="Signature saved"; } };
-    cv.addEventListener("pointerup",end); cv.addEventListener("pointercancel",end);
-    root.querySelector('[data-x="sigClear"]').addEventListener("click",()=>{ ctx.clearRect(0,0,cv.width,cv.height); profile.sig=""; dirty=false; store.set("profile",profile); O("sigState").textContent="Sign with your finger"; });
-    O("profileBox").addEventListener("toggle",()=>{ if(O("profileBox").open) requestAnimationFrame(size); });
+    cv.addEventListener("pointerup",end); cv.addEventListener("pointercancel",end); cv.addEventListener("pointerleave",end);
+    root.querySelector('[data-x="sigClear"]').addEventListener("click",()=>{ ctx.setTransform(1,0,0,1,0,0); ctx.clearRect(0,0,cv.width,cv.height); profile.sig=""; dirty=false; store.set("profile",profile); O("sigState").textContent="Sign with your finger"; });
+    O("profileBox").addEventListener("toggle",()=>{ if(O("profileBox").open) requestAnimationFrame(()=>{ sized=false; size(); }); });
+    if(window.ResizeObserver){ const ro=new ResizeObserver(()=>{ sized=false; size(); }); ro.observe(cv); }
+    window.addEventListener("orientationchange",()=>{ sized=false; requestAnimationFrame(size); });
     if(profile.sig) O("sigState").textContent="Signature saved";
     requestAnimationFrame(size);
   })();
@@ -384,7 +389,7 @@
         } else if(l.kind==="mileage"){
           const M=await formMeta("/expenses/newmileage");
           const rc=await upload(sheet,sheetName);
-          await create("/expenses/newmileage",[["UserId",M.hidden.UserId],...rc,...base,["From",profile.homePc.toUpperCase().trim()],["To[0]",game.rinkPc.toUpperCase().trim()],["IsReturn","true"],["IsReturn","false"],["DistanceUnit",M.hidden.DistanceUnit||"Miles"],["Distance",String(c.claimed)],["MileageRateId",M.opt("MileageRateId",t=>/under 10k miles \(0\.45\)/i.test(t))],["VehicleSpecificationId",M.opt("VehicleSpecificationId",t=>/^Any/.test(t))],["Notes",""]]);
+          await create("/expenses/newmileage",[["UserId",M.hidden.UserId],...rc,...base,["From",profile.homePc.toUpperCase().trim()],["To[0]",game.rinkPc.toUpperCase().trim()],["IsReturn","true"],["IsReturn","false"],["DistanceUnit",M.hidden.DistanceUnit||"Miles"],["Distance",String(c.claimed)],["MileageRateId",M.opt("MileageRateId",t=>/under 10k miles \(0\.45\)/i.test(t))],["VehicleSpecificationId",M.opt("VehicleSpecificationId",t=>/^Any/.test(t))],["Notes",game.mileNotes||""]]);
         } else {
           const f=files[l.e.i];
           const rc=await upload(f,f.name||"receipt.jpg");
