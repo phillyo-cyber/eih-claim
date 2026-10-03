@@ -164,7 +164,57 @@ footer{margin-top:30px;color:var(--muted);font-size:13.5px;text-align:center}
 </main>
 
 <script>
-({function(){})();
+(function(){
+  const $=s=>document.querySelector(s);
+  const host=$("#host"), mark=$("#mark"), copy=$("#copy");
+  const KEY="eih-setup-host";
+  try{ const v=localStorage.getItem(KEY); if(v && !host.value) host.value=v; }catch(e){}
+
+  function bookmarklet(url){
+    return "javascript:(()=>{const s=document.createElement('script');s.src='"+url+"?'+Date.now();document.body.appendChild(s)})()";
+  }
+  function valid(u){ return /^https:\/\/[^\s'"]+\.js$/i.test(u.trim()); }
+  let current="";
+  function render(){
+    const u=host.value.trim();
+    if(valid(u)){
+      current=bookmarklet(u);
+      mark.textContent=current; copy.disabled=false;
+      try{ localStorage.setItem(KEY,u); }catch(e){}
+    }else{
+      current=""; copy.disabled=true;
+      mark.innerHTML = u ? '<span class="pending">That should be a full https address ending in .js</span>' : '<span class="pending">Add the address above to generate the link…</span>';
+    }
+  }
+  host.addEventListener("input",render); render();
+
+  copy.addEventListener("click",async()=>{
+    if(!current) return;
+    let ok=false;
+    try{ await navigator.clipboard.writeText(current); ok=true; }catch(e){
+      const t=document.createElement("textarea"); t.value=current; t.style.cssText="position:fixed;opacity:0"; document.body.appendChild(t); t.select();
+      try{ ok=document.execCommand("copy"); }catch(_){} t.remove();
+    }
+    copy.textContent=ok?"Copied":"Select it"; copy.classList.toggle("done",ok);
+    setTimeout(()=>{ copy.textContent="Copy"; copy.classList.remove("done"); },1600);
+  });
+
+  const tabs=[...document.querySelectorAll('.tab')];
+  function select(id){
+    tabs.forEach(t=>{ const on=t.id===id; t.setAttribute("aria-selected",on?"true":"false"); document.getElementById(t.getAttribute("aria-controls")).hidden=!on; });
+  }
+  tabs.forEach(t=>t.addEventListener("click",()=>select(t.id)));
+  const ua=navigator.userAgent;
+  if(/Android/i.test(ua)) select("t-and");
+  else if(/iPhone|iPad|iPod/i.test(ua)) select("t-ios");
+  else if(!/Mobile/i.test(ua)) select("t-lap");
+
+  // little scoreboard clock ticking up, purely decorative
+  const clock=document.querySelector(".clock"); let s=0;
+  if(clock && !matchMedia("(prefers-reduced-motion:reduce)").matches){
+    setInterval(()=>{ s=(s+1)%1200; clock.textContent=String(Math.floor(s/60)).padStart(2,"0")+":"+String(s%60).padStart(2,"0"); },1000);
+  }
+})();
 </script>
 </body>
 </html>
