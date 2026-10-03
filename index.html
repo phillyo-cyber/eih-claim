@@ -1,0 +1,170 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Game day claim - setup</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Barlow:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --ice:#EEF4F8;--surface:#fff;--board:#152740;--ink:#17263B;--muted:#5A6A7E;
+  --blue:#2257C9;--red:#C8102E;--crease:#DCE8F4;--line:#C7D5E2;--ok:#1E7A4F;
+  box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);color-scheme:light;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --ice:#0E1A29;--surface:#16273A;--board:#081120;--ink:#E7EEF6;--muted:#96A7BC;
+  --blue:#6E9BFF;--red:#FF5B6E;--crease:#1E3450;--line:#28405C;--ok:#4CC38A;color-scheme:dark;}}
+:root[data-theme="dark"]{--ice:#0E1A29;--surface:#16273A;--board:#081120;--ink:#E7EEF6;--muted:#96A7BC;--blue:#6E9BFF;--red:#FF5B6E;--crease:#1E3450;--line:#28405C;--ok:#4CC38A;color-scheme:dark;}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*,*::before,*::after{box-sizing:inherit}
+body{margin:0;background:var(--ice);color:var(--ink);font:16px/1.55 Barlow,system-ui,-apple-system,"Segoe UI",sans-serif;-webkit-text-size-adjust:100%}
+.cond{font-family:"Barlow Condensed","Arial Narrow",Barlow,sans-serif}
+main{max-width:660px;margin:0 auto;padding:0 16px 56px}
+
+/* rink-board hero */
+.hero{background:var(--board);color:#fff;margin:0 -16px 22px;padding:calc(26px + env(safe-area-inset-top,0px)) 22px 26px;position:relative;overflow:hidden}
+.hero::after{content:"";position:absolute;left:0;right:0;bottom:0;height:5px;background:linear-gradient(90deg,var(--red) 0 33%,#fff 33% 67%,var(--blue) 67%)}
+.hero .kicker{font:600 14px/1 "Barlow Condensed",sans-serif;letter-spacing:.14em;text-transform:uppercase;color:#9DB4D2;margin:0 0 10px}
+.hero h1{font:700 40px/0.98 "Barlow Condensed",sans-serif;margin:0;letter-spacing:.005em}
+.hero p{margin:12px 0 0;color:#C4D3E6;font-size:16px;max-width:46ch}
+.hero .clock{position:absolute;top:18px;right:20px;font:700 34px/1 "Barlow Condensed",sans-serif;color:#26405f;letter-spacing:.08em}
+
+.lede{font-size:17px;margin:0 0 22px}
+.lede b{font-weight:600}
+
+/* the three-period timeline */
+.periods{list-style:none;margin:0 0 26px;padding:0;counter-reset:p}
+.periods li{display:grid;grid-template-columns:38px 1fr;gap:14px;padding:0 0 18px;position:relative}
+.periods li::before{counter-increment:p;content:counter(p);grid-row:1/3;width:38px;height:38px;border-radius:50%;background:var(--crease);color:var(--blue);font:700 19px/38px "Barlow Condensed",sans-serif;text-align:center}
+.periods li:not(:last-child)::after{content:"";position:absolute;left:18px;top:44px;bottom:-2px;width:2px;background:var(--line)}
+.periods h3{font:600 20px/1.2 "Barlow Condensed",sans-serif;margin:6px 0 2px}
+.periods p{margin:0;color:var(--muted);font-size:15px}
+
+h2.section{font:700 15px/1 "Barlow Condensed",sans-serif;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin:32px 0 14px;padding-bottom:8px;border-bottom:2px solid var(--line)}
+
+.card{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:18px;margin:0 0 16px}
+label.f{display:block;font-weight:600;font-size:15px;margin:0 0 6px}
+label.f small{font-weight:400;color:var(--muted);display:block;font-size:13px;margin-top:2px}
+input[type=url]{width:100%;font:15px Barlow,sans-serif;color:var(--ink);background:var(--ice);border:1px solid var(--line);border-radius:10px;padding:11px 12px;min-height:46px}
+input:focus-visible,button:focus-visible,a:focus-visible,summary:focus-visible{outline:3px solid var(--blue);outline-offset:2px}
+
+.bookmark{margin-top:14px}
+.bookmark .lab{font:600 13px/1 "Barlow Condensed",sans-serif;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin:0 0 6px}
+.code{display:flex;gap:8px;align-items:stretch}
+.code code{flex:1;background:var(--board);color:#DCE6F2;border-radius:10px;padding:12px;font:13px/1.5 ui-monospace,SFMono-Regular,Menlo,monospace;word-break:break-all;overflow-wrap:anywhere;min-width:0}
+.copy{flex:0 0 auto;background:var(--red);color:#fff;border:0;border-radius:10px;padding:0 18px;font:600 15px Barlow,sans-serif;min-height:auto;cursor:pointer}
+.copy.done{background:var(--ok)}
+.pending{color:var(--muted);font-style:italic}
+
+/* device tabs */
+.tabs{display:flex;gap:8px;margin:0 0 16px;flex-wrap:wrap}
+.tab{flex:1;min-width:120px;background:var(--surface);border:1px solid var(--line);border-radius:11px;padding:11px 8px;font:600 15px Barlow,sans-serif;color:var(--ink);cursor:pointer;text-align:center}
+.tab[aria-selected="true"]{background:var(--board);color:#fff;border-color:var(--board)}
+.tab .dev{display:block;font:700 17px "Barlow Condensed",sans-serif}
+.tab .app{display:block;font-size:12px;color:var(--muted)}
+.tab[aria-selected="true"] .app{color:#9DB4D2}
+
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:18px}
+.panel[hidden]{display:none}
+ol.steps{margin:0;padding:0;list-style:none;counter-reset:s}
+ol.steps li{position:relative;padding:0 0 16px 34px;counter-increment:s}
+ol.steps li::before{content:counter(s);position:absolute;left:0;top:-1px;width:24px;height:24px;border-radius:50%;background:var(--crease);color:var(--blue);font:700 14px/24px "Barlow Condensed",sans-serif;text-align:center}
+ol.steps li:not(:last-child)::after{content:"";position:absolute;left:11px;top:26px;bottom:2px;width:2px;background:var(--line)}
+ol.steps b{font-weight:600}
+kbd{background:var(--crease);border:1px solid var(--line);border-radius:5px;padding:1px 6px;font:13px ui-monospace,monospace;color:var(--ink);white-space:nowrap}
+
+.note{display:flex;gap:12px;background:var(--crease);border-radius:12px;padding:14px;margin:16px 0 0;font-size:14.5px}
+.note .puck{flex:0 0 auto;width:30px;height:30px;border-radius:50%;background:var(--board)}
+.note b{font-weight:600}
+.warn{background:transparent;border:1px solid var(--red);color:var(--ink)}
+.warn .puck{background:var(--red)}
+
+footer{margin-top:30px;color:var(--muted);font-size:13.5px;text-align:center}
+@media (max-width:430px){.hero h1{font-size:33px}.hero .clock{display:none}}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<main>
+  <div class="hero">
+    <div class="clock cond">00:00</div>
+    <p class="kicker">EIH officials · expense claims</p>
+    <h1>Game day claim</h1>
+    <p>Fill one form after the game. It writes your IHUK claim sheet and drops the match fee, mileage and any extras straight into ExpenseIn as drafts, ready for you to check and submit.</p>
+  </div>
+
+  <p class="lede">You set this up <b>once</b> on each device. After that it's one tap on the ExpenseIn page whenever you've a game to claim.</p>
+
+  <ul class="periods">
+    <li><h3>Add the button, once</h3><p>Follow the steps below for your phone or laptop. Takes a minute, and you never do it again on that device.</p></li>
+    <li><h3>Open ExpenseIn and tap it</h3><p>Sign into ExpenseIn as normal, then tap Game day claim. Your form opens on top.</p></li>
+    <li><h3>Fill in the game, tap Create</h3><p>Pick the rink and teams, snap any receipts. It builds every draft for you. Nothing is submitted until you say so.</p></li>
+  </ul>
+
+  <h2 class="section">Step 1 · your button link</h2>
+  <div class="card">
+    <label class="f" for="host">The form is hosted and ready
+      <small>Your button link is generated below. You only need to touch this address if you move the file.</small>
+    </label>
+    <input id="host" type="url" inputmode="url" autocapitalize="off" spellcheck="false" value="https://phillyo-cyber.github.io/eih-claim/game-day-claim.js" placeholder="https://your-name.github.io/eih-claim/game-day-claim.js">
+    <div class="bookmark">
+      <p class="lab">Copy this as the button link</p>
+      <div class="code"><code id="mark"><span class="pending">Add the address above to generate the link…</span></code><button type="button" class="copy" id="copy" disabled>Copy</button></div>
+    </div>
+    <div class="note"><span class="puck"></span><div>The link just loads your file from that address each time it's tapped. Update the file and every official gets the new version - nothing to reinstall.</div></div>
+  </div>
+
+  <h2 class="section">Step 2 · add it to your device</h2>
+  <div class="tabs" role="tablist" aria-label="Choose your device">
+    <button class="tab" role="tab" id="t-ios" aria-controls="p-ios" aria-selected="true"><span class="dev">iPhone / iPad</span><span class="app">Safari</span></button>
+    <button class="tab" role="tab" id="t-and" aria-controls="p-and" aria-selected="false"><span class="dev">Android</span><span class="app">Chrome</span></button>
+    <button class="tab" role="tab" id="t-lap" aria-controls="p-lap" aria-selected="false"><span class="dev">Laptop</span><span class="app">Chrome / Edge</span></button>
+  </div>
+
+  <div class="panel" id="p-ios" role="tabpanel" aria-labelledby="t-ios">
+    <ol class="steps">
+      <li>In <b>Safari</b>, open any page, then tap the <b>share</b> icon and choose <b>Add Bookmark</b>. Save it. The page itself doesn't matter - you're about to replace its address.</li>
+      <li>Tap the <b>bookmarks</b> icon, then <b>Edit</b>. Tap the bookmark you just made.</li>
+      <li>Rename it <b>Game day claim</b>. Delete the web address underneath and <b>paste the button link</b> from Step 1 in its place. Tap Done.</li>
+      <li>To use it: open <b>ExpenseIn</b> and sign in, tap the bookmarks icon, and tap <b>Game day claim</b>. The form opens on top of the page.</li>
+    </ol>
+    <div class="note"><span class="puck"></span><div>Tip: after the first use, tap <b>Share → Add to Home Screen</b> on ExpenseIn so it opens full-screen like an app.</div></div>
+  </div>
+
+  <div class="panel" id="p-and" role="tabpanel" aria-labelledby="t-and" hidden>
+    <ol class="steps">
+      <li>In <b>Chrome</b>, open any page and tap the <kbd>⋮</kbd> menu, then the <b>star</b> to bookmark it.</li>
+      <li>Tap <kbd>⋮</kbd> → <b>Bookmarks</b>, find the new one and tap <b>Edit</b> (pencil icon).</li>
+      <li>Rename it <b>Game day claim</b>, clear the URL field and <b>paste the button link</b> from Step 1. Save.</li>
+      <li>To use it: open <b>ExpenseIn</b> and sign in, then tap the <b>address bar</b>, type <b>Game day claim</b>, and tap the bookmark that appears in the suggestions.</li>
+    </ol>
+    <div class="note warn"><span class="puck"></span><div>On Android you must run it from the <b>address bar suggestion</b>, not the bookmarks list - Chrome blocks these links when opened from the list.</div></div>
+  </div>
+
+  <div class="panel" id="p-lap" role="tabpanel" aria-labelledby="t-lap" hidden>
+    <ol class="steps">
+      <li>Make sure the <b>bookmarks bar</b> is showing: <kbd>Cmd/Ctrl+Shift+B</kbd> toggles it.</li>
+      <li>Right-click the bookmarks bar and choose <b>Add page…</b></li>
+      <li>Name it <b>Game day claim</b>, and in the URL field <b>paste the button link</b> from Step 1. Save.</li>
+      <li>To use it: open <b>ExpenseIn</b> and sign in, then click <b>Game day claim</b> on the bookmarks bar. The form opens on top of the page.</li>
+    </ol>
+    <div class="note"><span class="puck"></span><div>Same button works in Edge and Brave. On a laptop you can also drag the receipt files in instead of taking a photo.</div></div>
+  </div>
+
+  <h2 class="section">What officials should know</h2>
+  <div class="card">
+    <div class="note"><span class="puck"></span><div><b>Your login stays with ExpenseIn.</b> The form runs inside your own signed-in ExpenseIn session on your device. It never asks for your password and nothing is sent to another site.</div></div>
+    <div class="note"><span class="puck"></span><div><b>Nothing is submitted for you.</b> It only creates drafts. You review each one in ExpenseIn and submit when you're ready - once a week, as EIH asks.</div></div>
+    <div class="note"><span class="puck"></span><div><b>Your details are remembered</b> on your own device only, so next time you just enter the game.</div></div>
+  </div>
+
+  <footer>Unofficial helper for EIH officials · runs in your own ExpenseIn session · not affiliated with England Ice Hockey or ExpenseIn</footer>
+</main>
+
+<script>
+({function(){})();
+</script>
+</body>
+</html>
