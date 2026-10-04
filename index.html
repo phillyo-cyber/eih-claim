@@ -73,6 +73,9 @@ ol.steps li{position:relative;padding:0 0 16px 34px;counter-increment:s}
 ol.steps li::before{content:counter(s);position:absolute;left:0;top:-1px;width:24px;height:24px;border-radius:50%;background:var(--crease);color:var(--blue);font:700 14px/24px "Barlow Condensed",sans-serif;text-align:center}
 ol.steps li:not(:last-child)::after{content:"";position:absolute;left:11px;top:26px;bottom:2px;width:2px;background:var(--line)}
 ol.steps b{font-weight:600}
+ol.steps li.warnstep{background:var(--crease);border-radius:10px;padding:10px 10px 10px 34px;margin-left:-10px}
+ol.steps li.warnstep::before{left:10px;top:9px;background:var(--red);color:#fff}
+ol.steps li.warnstep::after{left:21px}
 kbd{background:var(--crease);border:1px solid var(--line);border-radius:5px;padding:1px 6px;font:13px ui-monospace,monospace;color:var(--ink);white-space:nowrap}
 
 .note{display:flex;gap:12px;background:var(--crease);border-radius:12px;padding:14px;margin:16px 0 0;font-size:14.5px}
@@ -125,12 +128,16 @@ footer{margin-top:30px;color:var(--muted);font-size:13.5px;text-align:center}
 
   <div class="panel" id="p-ios" role="tabpanel" aria-labelledby="t-ios">
     <ol class="steps">
-      <li>In <b>Safari</b>, open any page, then tap the <b>share</b> icon and choose <b>Add Bookmark</b>. Save it. The page itself doesn't matter - you're about to replace its address.</li>
-      <li>Tap the <b>bookmarks</b> icon, then <b>Edit</b>. Tap the bookmark you just made.</li>
-      <li>Rename it <b>Game day claim</b>. Delete the web address underneath and <b>paste the button link</b> from Step 1 in its place. Tap Done.</li>
-      <li>To use it: open <b>ExpenseIn</b> and sign in, tap the bookmarks icon, and tap <b>Game day claim</b>. The form opens on top of the page.</li>
+      <li>In Step 1 above, tap <b>Copy</b> so the button link is on your clipboard.</li>
+      <li>In <b>Safari</b>, on any page, tap the <b>•••</b> menu (bottom right, or the <b>AA</b> on the address bar), and choose <b>Add to Bookmarks</b>, then <b>Save</b>. It doesn't matter which page you're on - you'll replace its address next.</li>
+      <li>Tap the <b>open-book Bookmarks</b> icon, then <b>Edit</b> (bottom right), then tap the bookmark you just made.</li>
+      <li>Change the <b>name</b> to <b>Game day claim</b>.</li>
+      <li class="warnstep"><b>This is the step that matters:</b> tap the <b>web-address line</b> under the name, clear it <b>completely</b> (press and hold → <b>Select All</b> → <b>Delete</b>), then press and hold again and tap <b>Paste</b>. The address must now start with <b>javascript:</b> - if it still shows anything about <b>expensein.com</b>, it hasn't been replaced.</li>
+      <li>Tap <b>Done</b>, then <b>Done</b> again.</li>
+      <li>To use it: open <b>ExpenseIn</b> and sign in, tap the <b>Bookmarks</b> icon, and tap <b>Game day claim</b>. The form opens on top of the page.</li>
     </ol>
-    <div class="note"><span class="puck"></span><div>Tip: after the first use, tap <b>Share → Add to Home Screen</b> on ExpenseIn so it opens full-screen like an app.</div></div>
+    <div class="note warn"><span class="puck"></span><div><b>If tapping it just reopens the ExpenseIn login:</b> the address didn't get replaced. Re-edit the bookmark, make sure the address line is <b>empty</b> before pasting, and check what you paste begins with <b>javascript:</b></div></div>
+    <div class="note"><span class="puck"></span><div>Tip: once it's working, on the ExpenseIn page tap <b>•••</b> → <b>Add to Home Screen</b> so it opens full-screen like an app.</div></div>
   </div>
 
   <div class="panel" id="p-and" role="tabpanel" aria-labelledby="t-and" hidden>
