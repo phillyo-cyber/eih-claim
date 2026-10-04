@@ -37,7 +37,8 @@
   let pcs = store.get("pc",{});
   let game = blank();
   const files = {}; // extra index -> File (receipt photos, kept in memory only)
-  function blank(){ return {date:"",arrive:"",rink:"",rinkPc:"",home:"",away:"",comp:profile.comp||"NIHL National",fee:profile.fee||"",miles:"",milesAuto:false,split:false,claimed:"",mileNotes:"",shared:false,meetPc:"",role:"passenger",pax:"1",soloMiles:"",sharedMiles:"",extras:[]}; }
+  function feeFor(pos){ return pos==="linesman" ? "50" : (profile.fee && num(profile.fee)>0 ? String(num(profile.fee)) : "75"); }
+  function blank(){ return {date:"",arrive:"",rink:"",rinkPc:"",home:"",away:"",comp:profile.comp||"NIHL National",position:"referee",fee:feeFor("referee"),miles:"",milesAuto:false,split:false,claimed:"",mileNotes:"",shared:false,meetPc:"",role:"passenger",pax:"1",soloMiles:"",sharedMiles:"",extras:[]}; }
 
   /* ---------- styles ---------- */
   if(!document.getElementById("gdc-fonts")){
@@ -142,7 +143,7 @@
         <div><label for="gdc-last">Surname</label><input id="gdc-last" data-p="last" autocomplete="family-name"></div>
         <div><label for="gdc-town">Hometown</label><input id="gdc-town" data-p="town"></div>
         <div><label for="gdc-hpc">Home postcode</label><input id="gdc-hpc" data-p="homePc" autocapitalize="characters"></div>
-        <div><label for="gdc-fee">Usual match fee (£)</label><input id="gdc-fee" data-p="fee" type="number" inputmode="decimal" step="0.01"></div>
+        <div><label for="gdc-fee">Usual referee fee (£) <span class="hint">linesman defaults to £50</span></label><input id="gdc-fee" data-p="fee" type="number" inputmode="decimal" step="0.01"></div>
         <div><label for="gdc-comp">Usual competition</label><input id="gdc-comp" data-p="comp"></div>
         <div class="full"><label>Your signature <span class="hint">goes on the referee signature line</span></label>
           <canvas data-o="sig"></canvas>
@@ -160,8 +161,9 @@
         <div class="full"><label for="gdc-rpc">Rink postcode</label><input id="gdc-rpc" data-g="rinkPc" autocapitalize="characters"></div>
         <div><label for="gdc-home">Home team</label><input id="gdc-home" data-g="home" list="gdc-teams"></div>
         <div><label for="gdc-away">Away team</label><input id="gdc-away" data-g="away" list="gdc-teams"></div>
-        <div><label for="gdc-gcomp">Competition</label><input id="gdc-gcomp" data-g="comp"></div>
-        <div><label for="gdc-gfee">Match fee (£)</label><input id="gdc-gfee" data-g="fee" type="number" inputmode="decimal" step="0.01"></div>
+        <div class="full"><label for="gdc-gcomp">Competition</label><input id="gdc-gcomp" data-g="comp"></div>
+        <div><label for="gdc-position">Your role</label><select id="gdc-position" data-g="position"><option value="referee">Referee</option><option value="linesman">Linesman</option></select></div>
+        <div><label for="gdc-gfee">Match fee (£) <span class="hint" data-o="feeHint">default £75</span></label><input id="gdc-gfee" data-g="fee" type="number" inputmode="decimal" step="0.01"></div>
         <div class="full" data-o="milesRow"><label for="gdc-miles">Miles there and back <span class="hint">worked out by ExpenseIn</span></label><input id="gdc-miles" data-g="miles" type="number" inputmode="decimal" step="0.1">
           <p class="route" data-o="route">Add your home postcode and the rink to work out the miles.</p></div>
         <div class="full"><label class="check"><input type="checkbox" data-g="shared"> Shared travel - I met another official on the way</label></div>
@@ -205,7 +207,7 @@
 
   /* ---------- binding ---------- */
   root.querySelectorAll("[data-p]").forEach(el=>{ el.value=profile[el.dataset.p]||""; el.addEventListener("input",()=>{ profile[el.dataset.p]=el.value; store.set("profile",profile); if(el.dataset.p==="homePc") routeSoon();
-    const gk={fee:"fee",comp:"comp"}[el.dataset.p]; if(gk){ const gi=root.querySelector(`[data-g="${gk}"]`); if(!gi.dataset.touched){ game[gk]=el.value; gi.value=el.value; } }
+    const gk={fee:"fee",comp:"comp"}[el.dataset.p]; if(gk){ const gi=root.querySelector(`[data-g="${gk}"]`); const applies = gk!=="fee" || game.position==="referee"; if(applies && !gi.dataset.touched){ game[gk]= gk==="fee"?feeFor("referee"):el.value; gi.value=game[gk]; } }
     render(); }); });
   if(!profile.first||!profile.homePc) O("profileBox").open=true;
   function loadGame(){ root.querySelectorAll("[data-g]").forEach(el=>{ const k=el.dataset.g; if(el.type==="checkbox") el.checked=!!game[k]; else el.value=game[k]||""; }); renderExtras(); }
@@ -215,6 +217,7 @@
     if(k==="rinkPc"){ if(game.rink){ pcs[game.rink]=game.rinkPc.toUpperCase(); store.set("pc",pcs); } routeSoon(); }
     if(k==="miles") game.milesAuto=false;
     if(k==="split" && game.split && !game.claimed){ game.claimed = game.miles?String(Math.round(num(game.miles)/2*10)/10):""; root.querySelector('[data-g="claimed"]').value=game.claimed; }
+    if(k==="position"){ const fe=root.querySelector('[data-g="fee"]'); if(!fe.dataset.touched){ game.fee=feeFor(game.position); fe.value=game.fee; } }
     if(k==="meetPc"){ game.meetPc=game.meetPc.toUpperCase(); el.value=game.meetPc; routeSoon(); }
     if(k==="shared"){ if(game.shared) game.split=false; route(); }
     if(k==="role") route();
@@ -324,7 +327,7 @@
       uk:d?d.toLocaleDateString("en-GB"):"", long:d?d.toLocaleDateString("en-GB",{weekday:"long",day:"numeric",month:"long",year:"numeric"}):""};
   }
   function lines(c){
-    const L=[{kind:"fee",title:"Match fee",sub:"with claim sheet",amt:c.fee}];
+    const L=[{kind:"fee",title:"Match fee"+(game.position==="linesman"?" (linesman)":""),sub:"with claim sheet",amt:c.fee}];
     c.legs.forEach(l=>{
       const title = c.legs.length>1 ? (l.solo?"Mileage (solo leg)":"Mileage (with passenger"+(l.pax==="2"?"s":"")+")") : "Mileage";
       L.push({kind:"mileage",leg:l,title,sub:`${l.miles} miles at £${l.rate.toFixed(2)}, with claim sheet`,amt:l.amt});
@@ -340,6 +343,7 @@
     O("venue").textContent=c.r?c.r.venue:"\u00a0";
     O("total").textContent="£"+money(c.total);
     O("who").textContent=(profile.first||profile.last)?`${profile.first} ${profile.last}`.trim():"Fill in once";
+    O("feeHint").textContent="default £"+feeFor(game.position);
     O("sharedWrap").hidden=!game.shared;
     O("paxWrap").hidden=!(game.shared&&game.role==="driver");
     O("milesRow").hidden=game.shared;
@@ -470,7 +474,7 @@
         const l=L[i]; setState(i,"doing"); msg.textContent=`Creating ${l.title.toLowerCase()}...`;
         if(l.kind==="fee"){
           const rc=await upload(sheet,sheetName);
-          await create("/expenses/newpurchase",[["UserId",P.hidden.UserId],...rc,...base,["CurrencyId",P.hidden.CurrencyId],["ExchangeRate",P.hidden.ExchangeRate],["PurchaseMethodId",P.hidden.PurchaseMethodId],["MerchantName","Referee"],["Amount",money(c.fee)],["TaxRateId",vatId("Zero Rated (0%)")],["Notes",""]]);
+          await create("/expenses/newpurchase",[["UserId",P.hidden.UserId],...rc,...base,["CurrencyId",P.hidden.CurrencyId],["ExchangeRate",P.hidden.ExchangeRate],["PurchaseMethodId",P.hidden.PurchaseMethodId],["MerchantName",game.position==="linesman"?"Linesman":"Referee"],["Amount",money(c.fee)],["TaxRateId",vatId("Zero Rated (0%)")],["Notes",""]]);
         } else if(l.kind==="mileage"){
           const M=await formMeta("/expenses/newmileage");
           const rc=await upload(sheet,sheetName);
