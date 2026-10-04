@@ -37,7 +37,7 @@
   let pcs = store.get("pc",{});
   let game = blank();
   const files = {}; // extra index -> File (receipt photos, kept in memory only)
-  function blank(){ return {date:"",arrive:"",rink:"",rinkPc:"",home:"",away:"",comp:profile.comp||"NIHL National",fee:profile.fee||"",miles:"",milesAuto:false,split:false,claimed:"",mileNotes:"",extras:[]}; }
+  function blank(){ return {date:"",arrive:"",rink:"",rinkPc:"",home:"",away:"",comp:profile.comp||"NIHL National",fee:profile.fee||"",miles:"",milesAuto:false,split:false,claimed:"",mileNotes:"",shared:false,meetPc:"",role:"passenger",pax:"1",soloMiles:"",sharedMiles:"",extras:[]}; }
 
   /* ---------- styles ---------- */
   if(!document.getElementById("gdc-fonts")){
@@ -159,11 +159,18 @@
         <div><label for="gdc-away">Away team</label><input id="gdc-away" data-g="away" list="gdc-teams"></div>
         <div><label for="gdc-gcomp">Competition</label><input id="gdc-gcomp" data-g="comp"></div>
         <div><label for="gdc-gfee">Match fee (£)</label><input id="gdc-gfee" data-g="fee" type="number" inputmode="decimal" step="0.01"></div>
-        <div class="full"><label for="gdc-miles">Miles there and back <span class="hint">worked out by ExpenseIn</span></label><input id="gdc-miles" data-g="miles" type="number" inputmode="decimal" step="0.1">
+        <div class="full" data-o="milesRow"><label for="gdc-miles">Miles there and back <span class="hint">worked out by ExpenseIn</span></label><input id="gdc-miles" data-g="miles" type="number" inputmode="decimal" step="0.1">
           <p class="route" data-o="route">Add your home postcode and the rink to work out the miles.</p></div>
-        <div class="full"><label class="check"><input type="checkbox" data-g="split"> Splitting travel across more than one game today</label></div>
+        <div class="full"><label class="check"><input type="checkbox" data-g="shared"> Shared travel - I met another official on the way</label></div>
+        <div class="full" data-o="sharedWrap" hidden>
+          <label for="gdc-meetpc">Meeting point postcode <span class="hint">where you met - e.g. motorway services</span></label><input id="gdc-meetpc" data-g="meetPc" autocapitalize="characters">
+          <label for="gdc-role" style="margin-top:10px">From the meeting point</label>
+          <select id="gdc-role" data-g="role"><option value="passenger">Someone else drove - I rode with them</option><option value="driver">I drove - I carried the other official(s)</option></select>
+          <div data-o="paxWrap" hidden><label for="gdc-pax" style="margin-top:10px">Passengers in your car</label><select id="gdc-pax" data-g="pax"><option value="1">1 passenger (0.50/mile)</option><option value="2">2 passengers (0.55/mile)</option></select></div>
+          <p class="route" data-o="routeShared">Add your home and meeting point postcodes.</p></div>
+        <div class="full" data-o="splitRow"><label class="check"><input type="checkbox" data-g="split"> Splitting travel across more than one game today</label></div>
         <div class="full" data-o="claimedWrap" hidden><label for="gdc-cl">Miles claimed against this game</label><input id="gdc-cl" data-g="claimed" type="number" inputmode="decimal" step="0.1"></div>
-        <div class="full"><label for="gdc-mnotes">Travel notes <span class="hint">optional - e.g. shared a car, met up and drove part way</span></label><textarea id="gdc-mnotes" data-g="mileNotes" rows="2"></textarea></div>
+        <div class="full"><label for="gdc-mnotes">Travel notes <span class="hint">optional - e.g. who you shared with</span></label><textarea id="gdc-mnotes" data-g="mileNotes" rows="2"></textarea></div>
       </div>
       <datalist id="gdc-teams">${RINKS.map(r=>`<option value="${esc(r.key)}">`).join("")}</datalist>
     </section>
@@ -203,6 +210,9 @@
     if(k==="rinkPc"){ if(game.rink){ pcs[game.rink]=game.rinkPc.toUpperCase(); store.set("pc",pcs); } routeSoon(); }
     if(k==="miles") game.milesAuto=false;
     if(k==="split" && game.split && !game.claimed){ game.claimed = game.miles?String(Math.round(num(game.miles)/2*10)/10):""; root.querySelector('[data-g="claimed"]').value=game.claimed; }
+    if(k==="meetPc"){ game.meetPc=game.meetPc.toUpperCase(); el.value=game.meetPc; routeSoon(); }
+    if(k==="shared"){ if(game.shared) game.split=false; route(); }
+    if(k==="role") route();
     render();
   }));
   root.querySelector('[data-x="close"]').addEventListener("click",()=>{ root.hidden=true; });
@@ -229,16 +239,38 @@
   /* ---------- ExpenseIn distance ---------- */
   let routeTimer=null;
   function routeSoon(){ clearTimeout(routeTimer); routeTimer=setTimeout(route,700); }
+  async function leg(from,to){
+    const r=await fetch(`/expenses/calculatemapdistance?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}&isReturn=true&_=${Date.now()}`,{credentials:"same-origin",headers:{"X-Requested-With":"XMLHttpRequest"}});
+    const j=await r.json(); if(!j.DistanceCalculated) throw 0; return j;
+  }
   async function route(){
-    const from=(profile.homePc||"").trim(), to=(game.rinkPc||"").trim(), el=O("route");
-    if(!from||!to){ el.className="route"; el.textContent="Add your home postcode and the rink to work out the miles."; return; }
+    const home=(profile.homePc||"").trim(), rink=(game.rinkPc||"").trim();
+    if(game.shared){
+      const meet=(game.meetPc||"").trim(), el=O("routeShared");
+      if(!home||!meet){ el.className="route"; el.textContent="Add your home and meeting point postcodes."; return; }
+      el.className="route"; el.textContent="Working out the miles...";
+      try{
+        const d1=await leg(home,meet); game.soloMiles=String(d1.Distance);
+        if(game.role==="driver"){
+          if(!rink){ el.className="route"; el.textContent="Pick the rink too so I can work out the shared leg."; render(); return; }
+          const d2=await leg(meet,rink); game.sharedMiles=String(d2.Distance);
+          const pr=game.pax==="2"?"0.55":"0.50";
+          el.className="route good"; el.innerHTML=`Your drive, solo: ${home.toUpperCase()} to ${meet.toUpperCase()} and back, ${d1.Distance} mi @ 0.45.<br>Your drive, carrying: ${meet.toUpperCase()} to ${rink.toUpperCase()} and back, ${d2.Distance} mi @ ${pr}.`;
+        } else {
+          game.sharedMiles="";
+          el.className="route good"; el.innerHTML=`You claim your drive to the meeting point only: ${home.toUpperCase()} to ${meet.toUpperCase()} and back, ${d1.Distance} mi @ 0.45. The official who drove from there claims the rest.`;
+        }
+        render();
+      }catch(e){ el.className="route bad"; el.textContent="ExpenseIn couldn't find that route. Check the postcodes."; }
+      return;
+    }
+    const el=O("route");
+    if(!home||!rink){ el.className="route"; el.textContent="Add your home postcode and the rink to work out the miles."; return; }
     el.className="route"; el.textContent="Working out the route...";
     try{
-      const r=await fetch(`/expenses/calculatemapdistance?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}&isReturn=true&_=${Date.now()}`,{credentials:"same-origin",headers:{"X-Requested-With":"XMLHttpRequest"}});
-      const j=await r.json();
-      if(!j.DistanceCalculated) throw 0;
+      const j=await leg(home,rink);
       game.miles=String(j.Distance); game.milesAuto=true; root.querySelector('[data-g="miles"]').value=game.miles;
-      el.className="route good"; el.textContent=`${from.toUpperCase()} to ${to.toUpperCase()} and back: ${j.Distance} miles, about ${Math.floor(j.Duration/3600000)}h ${Math.round(j.Duration/60000)%60}m driving.`;
+      el.className="route good"; el.textContent=`${home.toUpperCase()} to ${rink.toUpperCase()} and back: ${j.Distance} miles, about ${Math.floor(j.Duration/3600000)}h ${Math.round(j.Duration/60000)%60}m driving.`;
       render();
     }catch(e){ el.className="route bad"; el.textContent="ExpenseIn couldn't find that route. Check the postcodes."; }
   }
@@ -246,18 +278,33 @@
   /* ---------- derived ---------- */
   function calc(){
     const r=RINKS.find(x=>x.key===game.rink), d=game.date?new Date(game.date+"T12:00:00"):null;
-    const miles=num(game.miles), claimed=game.split?num(game.claimed):miles;
-    const mileage=Math.round(claimed*RATE*100)/100;
+    const round2=n=>Math.round(n*100)/100;
+    let legs=[], mileage=0, miles=0, claimed=0;
+    if(game.shared){
+      const solo=num(game.soloMiles);
+      if(solo>0) legs.push({solo:true, from:(profile.homePc||"").toUpperCase().trim(), to:(game.meetPc||"").toUpperCase().trim(), miles:solo, rate:0.45, amt:round2(solo*0.45)});
+      if(game.role==="driver"){
+        const sh=num(game.sharedMiles), pr=game.pax==="2"?0.55:0.50;
+        if(sh>0) legs.push({solo:false, pax:game.pax, from:(game.meetPc||"").toUpperCase().trim(), to:(game.rinkPc||"").toUpperCase().trim(), miles:sh, rate:pr, amt:round2(sh*pr)});
+      }
+      mileage=legs.reduce((s,l)=>s+l.amt,0); miles=legs.reduce((s,l)=>s+l.miles,0);
+    } else {
+      miles=num(game.miles); claimed=game.split?num(game.claimed):miles; mileage=round2(claimed*RATE);
+      if(claimed>0) legs.push({solo:true, single:true, from:(profile.homePc||"").toUpperCase().trim(), to:(game.rinkPc||"").toUpperCase().trim(), miles:claimed, rate:RATE, amt:mileage});
+    }
     const extras=game.extras.map((e,i)=>({...e,i})).filter(e=>num(e.amount)>0);
     const extrasTotal=extras.reduce((s,e)=>s+num(e.amount),0);
     const fee=num(game.fee), travel=mileage+extrasTotal;
     const desc=(d&&game.home&&game.away)?`${TEST?"TEST - ":""}${String(d.getDate()).padStart(2,"0")} ${MONTHS[d.getMonth()]} ${d.getFullYear()} - ${game.home.trim()} v ${game.away.trim()}`:"";
-    return {r,d,miles,claimed,mileage,extras,extrasTotal,fee,travel,total:travel+fee,desc,
+    return {r,d,miles,claimed,mileage,legs,extras,extrasTotal,fee,travel,total:travel+fee,desc,
       uk:d?d.toLocaleDateString("en-GB"):"", long:d?d.toLocaleDateString("en-GB",{weekday:"long",day:"numeric",month:"long",year:"numeric"}):""};
   }
   function lines(c){
     const L=[{kind:"fee",title:"Match fee",sub:"with claim sheet",amt:c.fee}];
-    if(c.claimed>0) L.push({kind:"mileage",title:"Mileage",sub:`${c.claimed} miles at £0.45, with claim sheet`,amt:c.mileage});
+    c.legs.forEach(l=>{
+      const title = c.legs.length>1 ? (l.solo?"Mileage (solo leg)":"Mileage (with passenger"+(l.pax==="2"?"s":"")+")") : "Mileage";
+      L.push({kind:"mileage",leg:l,title,sub:`${l.miles} miles at £${l.rate.toFixed(2)}, with claim sheet`,amt:l.amt});
+    });
     c.extras.forEach(e=>L.push({kind:"extra",e,title:EXTRA[e.type].label,sub:files[e.i]?"with receipt photo":"receipt photo needed",amt:num(e.amount)}));
     return L;
   }
@@ -269,7 +316,11 @@
     O("venue").textContent=c.r?c.r.venue:"\u00a0";
     O("total").textContent="£"+money(c.total);
     O("who").textContent=(profile.first||profile.last)?`${profile.first} ${profile.last}`.trim():"Fill in once";
-    O("claimedWrap").hidden=!game.split;
+    O("sharedWrap").hidden=!game.shared;
+    O("paxWrap").hidden=!(game.shared&&game.role==="driver");
+    O("milesRow").hidden=game.shared;
+    O("splitRow").hidden=game.shared;
+    O("claimedWrap").hidden=!game.split||game.shared;
     if(!running) O("plan").innerHTML = lines(c).map((l,i)=>`<li data-l="${i}"><span class="mark"></span><span class="what"><b>${esc(l.title)}</b><small>${esc(l.sub)}</small></span><span class="amt">£${money(l.amt)}</span></li>`).join("");
   }
 
@@ -306,9 +357,19 @@
     const ring=(x0,x1,cy)=>page.drawEllipse({x:(x0+x1)/2,y:H-cy,xScale:(x1-x0)/2+2.5,yScale:6,borderColor:ink,borderWidth:1.2});
     put(profile.first,110,98,272,124); put(profile.last,344,98,492,124); put(c.uk,677,98,802,124);
     put(profile.town,110,125,272,152); put(c.r?c.r.venue:"",344,125,492,152); put(game.arrive,677,125,802,152);
-    if(c.miles>0) put(String(c.miles),195,186,279,215);
+    const totMiles=game.shared?(num(game.soloMiles)+num(game.sharedMiles)):c.miles;
+    if(totMiles>0) put(String(Math.round(totMiles*10)/10),195,186,279,215);
     game.split?ring(743,759,198):ring(725,737,198);
-    if(c.claimed>0){ put(String(c.claimed),301,226,407,255); put(money(c.mileage),695,226,802,255); }
+    if(c.mileage>0){ put(String(Math.round((game.shared?totMiles:c.claimed)*10)/10),301,226,407,255); put(money(c.mileage),695,226,802,255); }
+    // shared-travel breakdown in the white band between the mileage row and the car-park row
+    if(game.shared){
+      const mp=(game.meetPc||"").toUpperCase().trim();
+      let note;
+      if(c.legs.length>1){ const s=c.legs[0], p=c.legs[1]; note=`SHARED TRAVEL VIA ${mp}:  ${s.miles} MI @ £${s.rate.toFixed(2)}  +  ${p.miles} MI @ £${p.rate.toFixed(2)} (CARRYING ${p.pax==="2"?"2":"1"})`; }
+      else { note=`DROVE TO MEETING POINT ${mp} ONLY (${totMiles} MI); RODE WITH ANOTHER OFFICIAL TO THE RINK`; }
+      let sz=7; while(font.widthOfTextAtSize(note,sz)>756 && sz>5) sz-=0.25;
+      page.drawText(note,{x:44,y:H-262,size:sz,font,color:ink});
+    }
     [["park",266,289,278.5],["toll",289,312,301],["ferry",312,334,324]].forEach(([t,top,bot,cy])=>{
       const it=c.extras.filter(e=>e.type===t);
       it.length?ring(202,218,cy):ring(188,199,cy);
@@ -389,7 +450,8 @@
         } else if(l.kind==="mileage"){
           const M=await formMeta("/expenses/newmileage");
           const rc=await upload(sheet,sheetName);
-          await create("/expenses/newmileage",[["UserId",M.hidden.UserId],...rc,...base,["From",profile.homePc.toUpperCase().trim()],["To[0]",game.rinkPc.toUpperCase().trim()],["IsReturn","true"],["IsReturn","false"],["DistanceUnit",M.hidden.DistanceUnit||"Miles"],["Distance",String(c.claimed)],["MileageRateId",M.opt("MileageRateId",t=>/under 10k miles \(0\.45\)/i.test(t))],["VehicleSpecificationId",M.opt("VehicleSpecificationId",t=>/^Any/.test(t))],["Notes",game.mileNotes||""]]);
+          const lg=l.leg, rateRe = lg.rate>=0.55?/2 passengers.*\(0\.55\)/i : lg.rate>=0.50?/1 passenger.*\(0\.50\)/i : /under 10k miles \(0\.45\)/i;
+          await create("/expenses/newmileage",[["UserId",M.hidden.UserId],...rc,...base,["From",lg.from],["To[0]",lg.to],["IsReturn","true"],["IsReturn","false"],["DistanceUnit",M.hidden.DistanceUnit||"Miles"],["Distance",String(lg.miles)],["MileageRateId",M.opt("MileageRateId",t=>rateRe.test(t))],["VehicleSpecificationId",M.opt("VehicleSpecificationId",t=>/^Any/.test(t))],["Notes",game.mileNotes||""]]);
         } else {
           const f=files[l.e.i];
           const rc=await upload(f,f.name||"receipt.jpg");
