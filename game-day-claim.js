@@ -194,7 +194,9 @@
       <p class="sub">These drafts will be added to ExpenseIn with the claim sheet and receipts attached.</p>
       <ul class="plan" data-o="plan"></ul>
       <button type="button" class="primary" data-x="go">Create drafts in ExpenseIn</button>
+      <button type="button" class="secondary" data-x="save" style="margin-top:8px">Save a copy of my claim sheet</button>
       <p class="msg" data-o="msg" role="status"></p>
+      <button type="button" class="primary" data-x="todrafts" data-o="toDrafts" hidden>Go to my drafts in ExpenseIn</button>
       <p class="note">Nothing is submitted. You'll see the drafts in ExpenseIn to check, then submit once for the week.</p>
     </section>
   </div>`;
@@ -219,6 +221,25 @@
     render();
   }));
   root.querySelector('[data-x="close"]').addEventListener("click",()=>{ root.hidden=true; });
+  root.querySelector('[data-x="todrafts"]').addEventListener("click",()=>{ location.href="/"; });
+  async function saveSheet(){
+    const c=calc(), msg=O("msg");
+    if(!profile.first||!profile.last){ O("profileBox").open=true; msg.className="msg err"; msg.textContent="Add your name under Your details first."; return; }
+    if(!c.desc||!c.r){ msg.className="msg err"; msg.textContent="Add the game date, rink and both teams first."; return; }
+    try{
+      const blob=await buildPdf(c);
+      const name=`IHUK claim ${game.date} ${game.home} v ${game.away}.pdf`.replace(/[\\/:*?"<>|]/g,"");
+      const file=new File([blob],name,{type:"application/pdf"});
+      if(navigator.canShare && navigator.canShare({files:[file]})){
+        try{ await navigator.share({files:[file],title:name}); return; }
+        catch(e){ if(e&&e.name==="AbortError") return; }
+      }
+      const url=URL.createObjectURL(blob); const a=document.createElement("a"); a.href=url; a.download=name; document.body.appendChild(a); a.click(); a.remove(); setTimeout(()=>URL.revokeObjectURL(url),4000);
+      msg.className="msg ok"; msg.textContent="Saved a copy of your claim sheet.";
+    }catch(e){ msg.className="msg err"; msg.textContent=(e&&e.message==="pdf")?"The claim sheet tool didn't load. Check your signal and try again.":"Couldn't make the copy. Try again."; }
+  }
+  root.querySelector('[data-x="save"]').addEventListener("click",saveSheet);
+  loadPdfLib().catch(()=>{}); // warm up so Save a copy keeps its tap gesture on iOS
   root.querySelectorAll("[data-add]").forEach(b=>b.addEventListener("click",()=>{ const t=b.dataset.add; game.extras.push({type:t,desc:"",amount:"",vat:VAT[0]}); renderExtras(); render(); }));
 
   function renderExtras(){
@@ -463,8 +484,8 @@
         setState(i,"done");
       }
       done.push(key); store.set("done",done.slice(-100));
-      msg.className="msg ok"; msg.textContent=`All ${L.length} drafts created. Taking you to your drafts to check and submit.`;
-      setTimeout(()=>{ location.href="/"; },2200);
+      msg.className="msg ok"; msg.textContent=`All ${L.length} drafts created. Tap "Save a copy" if you'd like a record, then go to your drafts to check and submit.`;
+      O("toDrafts").hidden=false; btn.disabled=false; running=false;
     }catch(e){
       const i=[...O("plan").children].findIndex(x=>x.className==="doing"); if(i>=0) setState(i,"fail");
       fail((e&&e.message==="pdf")?"The claim sheet tool didn't load. Check your signal and try again.":(e&&e.message)||"Something went wrong. Check your drafts before trying again.");
