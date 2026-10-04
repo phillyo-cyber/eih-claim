@@ -82,6 +82,9 @@
   #gdc .hint{font-weight:400;color:var(--muted);font-size:13px}
   #gdc input,#gdc select,#gdc textarea{width:100%;font:16px Barlow,sans-serif;color:var(--ink);background:var(--ice);border:1px solid var(--line);border-radius:9px;padding:9px 10px;min-height:44px;margin:0;height:auto;box-sizing:border-box}
   #gdc textarea{resize:vertical;line-height:1.4}
+  #gdc input[type=date],#gdc input[type=time]{-webkit-appearance:none;appearance:none;height:44px;min-height:44px;line-height:24px;text-align:left}
+  #gdc input[type=date]::-webkit-date-and-time-value,#gdc input[type=time]::-webkit-date-and-time-value{text-align:left;margin:0;padding:0}
+  #gdc input[type=date]::-webkit-datetime-edit,#gdc input[type=time]::-webkit-datetime-edit{padding:0;line-height:24px}
   #gdc input[type=checkbox]{width:22px;height:22px;min-height:0;accent-color:var(--blue)}
   #gdc input:focus-visible,#gdc select:focus-visible,#gdc button:focus-visible{outline:3px solid var(--blue);outline-offset:2px}
   #gdc .check{display:flex;gap:10px;align-items:center;font-weight:500}
