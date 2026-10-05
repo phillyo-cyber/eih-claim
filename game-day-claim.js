@@ -10,11 +10,11 @@
   const RATE = 0.45;
   const RINKS = [
     {key:"Basingstoke", venue:"Planet Ice Basingstoke", pc:"RG22 6PG"},
-    {key:"Bristol", venue:"Planet Ice Bristol", pc:""},
+    {key:"Bristol", venue:"Planet Ice Bristol", pc:"BS10 7SR"},
     {key:"Hull", venue:"Hull Arena", pc:"HU1 2DZ"},
-    {key:"Leeds", venue:"Planet Ice Leeds", pc:""},
+    {key:"Leeds", venue:"Planet Ice Leeds", pc:"LS11 0EY"},
     {key:"Milton Keynes", venue:"Planet Ice Milton Keynes", pc:"MK9 1BL"},
-    {key:"Peterborough", venue:"Planet Ice Peterborough", pc:""},
+    {key:"Peterborough", venue:"Planet Ice Peterborough", pc:"PE3 8YN"},
     {key:"Romford", venue:"Sapphire Ice & Leisure", pc:"RM7 0AE"},
     {key:"Sheffield", venue:"iceSheffield", pc:"S9 5DA"},
     {key:"Solway", venue:"Dumfries Ice Bowl", pc:"DG2 9AN"},
